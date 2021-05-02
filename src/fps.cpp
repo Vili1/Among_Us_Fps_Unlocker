@@ -1,8 +1,9 @@
 #include <Windows.h>
-#include <iostream>
-#include <vector>
 #include <TlHelp32.h>
-#include <tchar.h>
+#include <iostream>
+#include <tchar.h> 
+#include <vector>
+
 
 DWORD dwGetModuleBaseAddress(TCHAR* lpszModuleName, DWORD pID)
 {
@@ -27,6 +28,7 @@ DWORD dwGetModuleBaseAddress(TCHAR* lpszModuleName, DWORD pID)
     return dwModuleBaseAddress;
 }
 
+
 int main()
 {
     reload:
@@ -35,12 +37,12 @@ int main()
     if (hGameWindow != NULL)
     {
         std::cout << "Among Us found successfully!" << std::endl;
-        std::cout << "------------------------------------------------------" << std::endl;
+        std::cout << "---------------------------------------------------------------------------" << std::endl;
     }
     else
     {
         std::cout << "Unable to find Among Us, Please open Among Us!" << std::endl;
-        std::cout << "------------------------------------------------------" << std::endl;
+        std::cout << "---------------------------------------------------------------------------" << std::endl;
         Sleep(1000);
         std::cout << "Auto reloading in 5 seconds!" << std::endl;
         Sleep(1000);
@@ -54,28 +56,44 @@ int main()
         
         goto reload;
     }
+    DWORD pID;
+    GetWindowThreadProcessId(hGameWindow, &pID);
+    HANDLE processHandle = NULL;
+    processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pID);
+    if (processHandle == INVALID_HANDLE_VALUE || processHandle == NULL)
+    {
+        std::cout << "Failed to open process!" << std::endl;
+        system("pause");
+        return 0;
+    }
 
+    char moduleName[] = "UnityPlayer.dll";
+    DWORD gameBaseAddress = dwGetModuleBaseAddress(_T(moduleName), pID);
+    DWORD offsetGameToBaseAddress = 0x0144D3BC;
+    std::vector<DWORD> pointsOffsets{0x200};
+    DWORD baseAddress;
 
-	DWORD pID;
-	HANDLE pHandle;
-	char moduleName[] = "UnityPlayer.dll";
-	DWORD baseAddress;
-	DWORD AdressValue;
-	int NewAdressValue = 0;
+    ReadProcessMemory(processHandle, (LPVOID)(gameBaseAddress + offsetGameToBaseAddress), &baseAddress, sizeof(baseAddress), NULL);
+    //std::cout << "Debugginfo: Baseaddress = " << std::hex << baseAddress << std::endl;
+    DWORD pointsAddress = baseAddress;
+    for (int i = 0; i < pointsOffsets.size() - 1; i++)
+    {
+        ReadProcessMemory(processHandle, (LPVOID)(pointsAddress + pointsOffsets.at(i)), &pointsAddress, sizeof(pointsAddress), NULL);
+        //std::cout << "Debugginfo: address at offset = " << std::hex << pointsAddress << std::endl;
+    }
+    pointsAddress += pointsOffsets.at(pointsOffsets.size() - 1);
+    //std::cout << "Debugginfo: address at final offset = " << std::hex << pointsAddress << std::endl;
+    //std::cout << "---------------------------------------------------------------------------" << std::endl;
 
-	std::cout << "External FPS Unlocker" << std::endl;
+    //"UI"
+    std::cout << "External FPS Unlocker" << std::endl;
 	std::cout << "VSync must be enabled!" << std::endl;
-	while (true)
-	{
-	
-		GetWindowThreadProcessId(hGameWindow, &pID);
-		pHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pID);
-		DWORD clientBase = dwGetModuleBaseAddress(_T(moduleName), pID);
-		ReadProcessMemory(pHandle, (LPCVOID)(clientBase + 0x0144D3BC), &baseAddress, sizeof(baseAddress), NULL);
-		AdressValue = baseAddress + 0x200;
-		WriteProcessMemory(pHandle, (LPVOID)(AdressValue), &NewAdressValue, sizeof(NewAdressValue), 0);
-		CloseHandle(pHandle);
-		Sleep(1000);
-        goto reload;
-	}
+    std::cout << "---------------------------------------------------------------------------" << std::endl;
+    int vsyncValue = 0;
+
+    //memory write 
+    WriteProcessMemory(processHandle, (LPVOID)(pointsAddress), &vsyncValue, sizeof(int), 0);
+    Sleep(1000);
+    goto reload;
+
 }
