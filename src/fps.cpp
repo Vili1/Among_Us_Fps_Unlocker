@@ -69,8 +69,8 @@ int main()
 
     char moduleName[] = "UnityPlayer.dll";
     DWORD gameBaseAddress = dwGetModuleBaseAddress(_T(moduleName), pID);
-    DWORD offsetGameToBaseAddress = 0x0144D3BC;
-    std::vector<DWORD> pointsOffsets{0x200};
+    DWORD offsetGameToBaseAddress = 0x0145E41C;
+    std::vector<DWORD> pointsOffsets{0x1FC};
     DWORD baseAddress;
 
     ReadProcessMemory(processHandle, (LPVOID)(gameBaseAddress + offsetGameToBaseAddress), &baseAddress, sizeof(baseAddress), NULL);
@@ -93,6 +93,7 @@ int main()
 
     //memory write 
     WriteProcessMemory(processHandle, (LPVOID)(pointsAddress), &vsyncValue, sizeof(int), 0);
+    CloseHandle(processHandle);
     Sleep(1000);
     goto reload;
 
